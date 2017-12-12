@@ -5,11 +5,12 @@ const h2o2 = require('h2o2');
 const sleep = require('sleep-promise');
 
 const proxyHost = process.env.ENDPOINT;
+const proxyProtocol = process.env.PROTOCOL || 'http';
 
 const main = async () => {
   const server = Hapi.server({
     port: 8080,
-    debug: { log: ['error'], request: ['error'] }
+    debug: { log: ['*'], request: ['*'] }
   });
 
   await server.register(h2o2);
@@ -20,14 +21,18 @@ const main = async () => {
     handler: async (request, h) => {
       const random = Math.random() * ( 10 - 1 ) + 1;
       if (random <= 3) {
+        request.server.log(['debug'], { path: request.params.path, type: 'return-error' });
         return h.response('There has been an error').code(503);
       }
 
       if (random > 7) {
+        request.server.log(['debug'], { path: request.params.path, type: 'delay-response' });
         await sleep(60000);
+      } else {
+        request.server.log(['debug'], { path: request.params.path, type: 'pass-through' });
       }
 
-      return h.proxy({ host: proxyHost, port: 80, protocol: 'http', passThrough: true });
+      return h.proxy({ host: proxyHost, port: 80, protocol: proxyProtocol, passThrough: true });
     }
   });
 
