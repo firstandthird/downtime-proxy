@@ -1,0 +1,19 @@
+version: '2'
+services:
+  proxy:
+    image: traefik
+    command: --web --docker --logLevel=INFO
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /dev/null:/traefik.toml
+  app:
+    build: '.'
+    environment:
+      ENDPOINT: 'https://firstandthird.com'
+    ports:
+      - '8080'
+    labels:
+      - "traefik.frontend.rule=PathPrefix:/"
