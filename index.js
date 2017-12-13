@@ -4,8 +4,11 @@ const Hapi = require('hapi');
 const h2o2 = require('h2o2');
 const sleep = require('sleep-promise');
 
-const proxyHost = process.env.ENDPOINT;
-const proxyProtocol = process.env.PROTOCOL || 'http';
+const proxyEndpoint = process.env.ENDPOINT;
+
+if (!proxyEndpoint) {
+  throw new Error('Must supply an ENDPOINT');
+}
 
 const main = async () => {
   const server = Hapi.server({
@@ -20,19 +23,23 @@ const main = async () => {
     path: '/{path*}',
     handler: async (request, h) => {
       const random = Math.random() * ( 10 - 1 ) + 1;
+
+      const path = request.params.path;
+      const uri = `${proxyEndpoint}/${path}`;
+
       if (random <= 3) {
-        request.server.log(['debug'], { path: request.params.path, type: 'return-error' });
+        request.server.log(['debug'], { path, uri, type: 'return-error' });
         return h.response('There has been an error').code(503);
       }
 
       if (random > 7) {
-        request.server.log(['debug'], { path: request.params.path, type: 'delay-response' });
+        request.server.log(['debug'], { path, uri, type: 'delay-response' });
         await sleep(60000);
       } else {
-        request.server.log(['debug'], { path: request.params.path, type: 'pass-through' });
+        request.server.log(['debug'], { path, uri, type: 'pass-through' });
       }
 
-      return h.proxy({ host: proxyHost, port: 80, protocol: proxyProtocol, passThrough: true });
+      return h.proxy({ uri, passThrough: true });
     }
   });
 
