@@ -18,6 +18,29 @@ const main = async () => {
 
   await server.register(h2o2);
 
+  let havoc = false;
+
+  server.route({
+    method: 'get',
+    path: '/_status',
+    handler: async (request, h) => {
+      if (request.query.havoc === 'true') {
+        havoc = true;
+      }
+
+      if (request.query.havoc === 'false') {
+        havoc = false;
+      }
+
+      let stat = 'Passing through';
+      if (havoc) {
+        stat = 'wreaking havoc';
+      }
+
+      return stat;
+    }
+  });
+
   server.route({
     method: 'get',
     path: '/{path*}',
@@ -27,16 +50,16 @@ const main = async () => {
       const path = request.params.path;
       const uri = `${proxyEndpoint}/${path}`;
 
-      if (random <= 3) {
-        request.server.log(['debug'], { path, uri, type: 'return-error' });
+      if (havoc && random <= 3) {
+        request.server.log(['debug'], { path, uri, havoc, type: 'return-error' });
         return h.response('There has been an error').code(503);
       }
 
-      if (random > 7) {
-        request.server.log(['debug'], { path, uri, type: 'delay-response' });
+      if (havoc && random > 7) {
+        request.server.log(['debug'], { path, uri, havoc, type: 'delay-response' });
         await sleep(60000);
       } else {
-        request.server.log(['debug'], { path, uri, type: 'pass-through' });
+        request.server.log(['debug'], { path, uri, havoc, type: 'pass-through' });
       }
 
       return h.proxy({ uri, passThrough: true });
